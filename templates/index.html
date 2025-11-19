@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TeamProject Flask 서버</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 2rem;
+        display: flex;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+        background: #f8fafc;
+        color: #0f172a;
+      }
+      main {
+        max-width: 640px;
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
+      }
+      h1 {
+        margin-top: 0;
+      }
+      code {
+        font-weight: 600;
+        background: #e2e8f0;
+        padding: 0.1rem 0.4rem;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>TeamProject Flask 서버</h1>
+      <p>이 페이지는 Flask 애플리케이션이 정상적으로 동작하는지 보여줍니다.</p>
+      <p>
+        <strong>서버 UTC 시각</strong>: {{ server_time.strftime('%Y-%m-%d %H:%M:%S') }}
+      </p>
+      <p>
+        더 자세한 상태 정보는 <code>GET /api/health</code> 엔드포인트를 호출해 확인할 수 있습니다.
+      </p>
+    </main>
+  </body>
+</html>

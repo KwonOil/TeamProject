@@ -1,2 +1,33 @@
 # TeamProject
-ìžìœ¨ì£¼í–‰, AI í”„ë¡œì íŠ¸ ë ˆí¬
+
+°£´ÜÇÑ Flask À¥ ¼­¹ö·Î ¼­ºñ½ºÀÇ ±âº» »À´ë¸¦ ºü¸£°Ô °ËÁõÇÒ ¼ö ÀÖ½À´Ï´Ù. È¨ È­¸é°ú JSON ÇüÅÂÀÇ Çï½ºÃ¼Å© ¿£µåÆ÷ÀÎÆ®¸¦ Á¦°øÇÏ¹Ç·Î ÃßÈÄ API È®Àå ½Ã¿¡ ±â¹Ý ÄÚµå·Î È°¿ëÇÒ ¼ö ÀÖ½À´Ï´Ù.
+
+## ¿ä±¸ »çÇ×
+- Python 3.10 ÀÌ»ó
+- °¡»óÈ¯°æ(¼±ÅÃ) ¹× `pip`
+
+## ·ÎÄÃ ½ÇÇà ¹æ¹ý
+1. (¼±ÅÃ) °¡»óÈ¯°æ »ý¼º
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+2. ÀÇÁ¸¼º ¼³Ä¡
+   ```powershell
+   pip install -r requirements.txt
+   ```
+3. ¼­¹ö ½ÇÇà
+   ```powershell
+   python app.py
+   ```
+   - ±âº» Æ÷Æ®´Â `5000`ÀÌ¸ç `PORT` È¯°æ º¯¼ö¸¦ ÁöÁ¤ÇÏ¸é µ¤¾î¾µ ¼ö ÀÖ½À´Ï´Ù.
+   - `FLASK_DEBUG=1`À» ÁöÁ¤ÇÏ¸é µð¹ö±× ¸ðµå°¡ È°¼ºÈ­µË´Ï´Ù.
+
+## ¿£µåÆ÷ÀÎÆ®
+- `/` : ÇöÀç ¼­¹ö ½Ã°¢À» ·»´õ¸µÇÏ´Â ±âº» ÆäÀÌÁö
+- `/api/health` : JSONÀ¸·Î ¼­¹ö »óÅÂ¸¦ ¹ÝÈ¯ (¹èÆ÷ ½Ã Çï½ºÃ¼Å© ¿ëµµ)
+
+## ´ÙÀ½ ´Ü°è ¾ÆÀÌµð¾î
+- `/api/health` ÀÀ´ä¿¡ ½ÇÁ¦ ºñÁî´Ï½º ¼­ºñ½ºÀÇ ÀÇÁ¸¼º »óÅÂ(µ¥ÀÌÅÍº£ÀÌ½º, ¿ÜºÎ API µî)¸¦ Æ÷ÇÔ
+- ÅÛÇÃ¸´/Á¤Àû ¸®¼Ò½º¸¦ ºÐ¸®ÇÏ¿© UI¸¦ È®Àå
+- Blueprint ±¸Á¶·Î API ¹öÀüÀÌ³ª µµ¸ÞÀÎ º° ¶ó¿ìÆÃÀ» Ãß°¡
