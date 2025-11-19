@@ -1,3 +1,18 @@
+# FastAPI 서버 스켈레톤
+
+- `server/main.py`에서 FastAPI 앱을 구동하고 `/api/robots` REST 라우터와 WebSocket 엔드포인트(`/ws/robots/state`, `/ws/robots/{robot_id}/camera`)를 제공합니다.
+- `server/api/robots.py`는 로봇 상태·이미지·목표 명령 API 스켈레톤을 정의합니다.
+- `server/services/robot_state_manager.py`와 `server/services/websocket_manager.py`가 각각 in-memory 상태 저장과 WebSocket 브로드캐스트를 담당합니다.
+- `requirements.txt`를 설치한 뒤 `uvicorn server.main:app --reload`로 서버를 실행할 수 있습니다.
+
+## 🚦 API 개요
+
+- **로봇 상태**: `POST /api/robots/{robot_id}/state`(또는 `/stat`) 로 업로드, `GET /api/robots/{robot_id}/state` 로 최신 상태 조회
+- **카메라 이미지**: `POST /api/robots/{robot_id}/image` 로 JPEG/PNG 프레임 업로드, WebSocket `/ws/robots/{robot_id}/camera` 로 대시보드 푸시
+- **목표 좌표**: `POST /api/robots/{robot_id}/set_goal` 로 등록, `GET /api/robots/{robot_id}/goal` 로 최근 목표 조회
+- **YOLO 추론**: `POST /api/yolo/inference` 로 대시보드/운용팀이 업로드한 이미지를 분석해 탐지 결과를 반환
+- **실시간 상태**: `/ws/robots/state` WebSocket 으로 모든 로봇 상태를 브로드캐스트
+
 # 🟦 **1. 로봇팀 문서 – Robot Team Guide**
 
 **ROS2 Humble + Ubuntu 22.04 기반**
