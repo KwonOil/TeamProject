@@ -1,0 +1,114 @@
+body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .page {
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 220px;
+            background-color: #222;
+            color: #eee;
+            padding: 20px;
+        }
+        .sidebar h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 22px;
+        }
+        .robot-tab {
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            border-radius: 6px;
+            cursor: pointer;
+            background-color: #333;
+            color: #ddd;
+        }
+        .robot-tab.active {
+            background-color: #4CAF50;
+            color: #fff;
+            font-weight: bold;
+        }
+        .robot-tab:hover {
+            background-color: #444;
+        }
+
+        .content {
+            flex: 1;
+            padding: 20px;
+        }
+        .section-title {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 2fr 1.5fr;
+            gap: 16px;
+        }
+        .card {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+            padding: 16px;
+        }
+        #cam {
+            width: 100%;
+            max-height: 360px;
+            object-fit: contain;
+            background-color: #000;
+            border-radius: 8px;
+        }
+
+        .status-row {
+            margin-bottom: 8px;
+        }
+        .status-label {
+            font-weight: bold;
+            display: inline-block;
+            width: 110px;
+        }
+
+        #sensorTable {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        #sensorTable th, #sensorTable td {
+            border: 1px solid #ccc;
+            padding: 4px 6px;
+            text-align: right;
+        }
+        #sensorTable th {
+            background-color: #eee;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .top-title {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .top-subtitle {
+            font-size: 14px;
+            color: #666;
+        }
+        #movePathBtn {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #movePathBtn:hover {
+            background-color: #45a047;
+        }

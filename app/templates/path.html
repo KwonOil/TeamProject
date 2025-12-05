@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body style="font-family: Arial; padding: 20px;">
+
+<h2>로봇 이동 경로</h2>
+
+<canvas id="pathChart" width="400" height="400" style="border: 1px solid #ccc;"></canvas>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const robotName = params.get("robot") || "tb3_1";
+
+let chart = null;
+
+async function loadPath() {
+    const res = await fetch(`/path/api?robot_name=${robotName}`);
+    const data = await res.json();
+
+    const xs = data.path.map(p => p.x);
+    const ys = data.path.map(p => p.y);
+
+    // Chart.js 좌표계는 y가 아래로 증가하므로 반전시키면 실제 로봇 좌표처럼 보임
+    const points = data.path.map(p => ({ x: p.x, y: -p.y }));
+
+    if (!chart) {
+        const ctx = document.getElementById("pathChart").getContext("2d");
+
+        chart = new Chart(ctx, {
+            type: "scatter",
+            data: {
+                datasets: [{
+                    label: "Robot Path",
+                    data: points,
+                    borderColor: "blue",
+                    backgroundColor: "rgba(0, 0, 255, 0.3)",
+                    showLine: true,
+                    tension: 0.2,
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        type: "linear",
+                        title: { display: true, text: "X (m)" }
+                    },
+                    y: {
+                        type: "linear",
+                        title: { display: true, text: "Y (m)" }
+                    }
+                }
+            }
+        });
+    } else {
+        chart.data.datasets[0].data = points;
+        chart.update();
+    }
+}
+
+// 1초마다 경로 업데이트
+setInterval(loadPath, 1000);
+
+loadPath();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!-- app/templates/dashboard.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- JS -->
+    <script src="/static/js/dashboard.js" defer></script>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+
+</head>
+<body>
+<div class="page">
+    <!-- 왼쪽: 로봇 목록 탭 -->
+    <div class="sidebar">
+        <h2>Robot List</h2>
+
+        {% if robot_names %}
+            {% for name in robot_names %}
+            <div class="robot-tab{% if name == initial_robot %} active{% endif %}"
+                 data-robot="{{ name }}">
+                {{ name }}
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>DB에 등록된 로봇이 없습니다.</p>
+        {% endif %}
+    </div>
+
+    <!-- 오른쪽: 현재 상태 영역 -->
+    <div class="content">
+        <div class="top-bar">
+            <div>
+                <div class="top-title">Robot Dashboard</div>
+                <div class="top-subtitle">
+                    선택된 로봇: <span id="currentRobotName">{{ initial_robot }}</span>
+                </div>
+            </div>
+            <button id="movePathBtn">이동경로 보기</button>
+        </div>
+
+        <div class="grid">
+            <!-- 실시간 영상 -->
+            <div class="card">
+                <h3 class="section-title">실시간 영상</h3>
+                <img id="cam" alt="Live Camera">
+            </div>
+
+            <!-- 상태 정보 -->
+            <div class="card">
+                <h3 class="section-title">현재 상태</h3>
+
+                <div class="status-row">
+                    <span class="status-label">배터리:</span>
+                    <span id="batteryText">Loading...</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">위치 (X,Y):</span>
+                    <span id="posText">-</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">속도 (m/s):</span>
+                    <span id="velText">-</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">각속도 (rad/s):</span>
+                    <span id="angVelText">-</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Yaw (deg):</span>
+                    <span id="yawText">-</span>
+                </div>
+                <div class="status-row" style="margin-top: 8px;">
+                    <span class="status-label">마지막 갱신:</span>
+                    <span id="timestampText">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 센서값 표 -->
+        <div class="card" style="margin-top: 16px;">
+            <h3 class="section-title">센서값 (LaserScan 일부)</h3>
+            <table id="sensorTable">
+                <thead>
+                    <tr>
+                        <th>Index</th>
+                        <th>Distance (m)</th>
+                    </tr>
+                </thead>
+                <tbody id="sensorBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- JS 에서 초기 선택 로봇 이름을 읽기 위해 전역 변수로 박아둠 -->
+<script>
+    window.INITIAL_ROBOT_NAME = "{{ initial_robot }}";
+</script>
+</body>
+</html>

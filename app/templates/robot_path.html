@@ -1,0 +1,43 @@
+<!-- app/templates/robot_path.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/robot_path.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/robot_path.js" defer></script>
+</head>
+<body>
+
+<div class="container">
+    <div class="top-bar">
+        <div>
+            <div class="title">{{ robot_name }} 이동경로</div>
+            <div class="subtitle">80m × 80m 맵 (중심 0,0)</div>
+        </div>
+
+        <a class="back-link" href="/dashboard">← 대시보드로 돌아가기</a>
+    </div>
+
+    <div class="card">
+        <div class="form-row">
+            <label>시작:</label>
+            <input type="datetime-local" id="startTime">
+            <label>종료:</label>
+            <input type="datetime-local" id="endTime">
+            <button id="loadPath">조회</button>
+        </div>
+
+        <canvas id="pathCanvas"></canvas>
+    </div>
+</div>
+
+<script>
+    window.ROBOT_NAME = "{{ robot_name }}";
+</script>
+
+</body>
+</html>
