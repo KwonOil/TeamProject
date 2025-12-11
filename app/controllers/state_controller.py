@@ -74,7 +74,7 @@ async def robot_state_ws(websocket: WebSocket, robot_name: str):
     - teamproject DB 저장 O
     """
     await websocket.accept()
-    print(f"[STATE][ROBOT] connected: {robot_name}")
+    print(f"[ROBOT][STATE] connected: {robot_name}")
 
     try:
         while True:
@@ -89,7 +89,7 @@ async def robot_state_ws(websocket: WebSocket, robot_name: str):
                 latest_robot_state[robot_name] = data
 
             # 실시간 viewer 브로드캐스트
-            print(f"[STATE][ROBOT] recieved data")
+            print(f"[ROBOT][STATE] recieved data")
             viewers = robot_viewers.get(robot_name, set())
             for ws in list(viewers):
                 try:
@@ -104,7 +104,7 @@ async def robot_state_ws(websocket: WebSocket, robot_name: str):
                 pass
 
     except WebSocketDisconnect:
-        print(f"[STATE][ROBOT] disconnected: {robot_name}")
+        print(f"[ROBOT][STATE] disconnected: {robot_name}")
 
 
 # ==========================================================
@@ -118,7 +118,7 @@ async def simulation_state_ws(websocket: WebSocket, robot_name: str):
     - simulation DB에만 저장
     """
     await websocket.accept()
-    print(f"[STATE][SIM] connected: {robot_name}")
+    print(f"[SIM][STATE] connected: {robot_name}")
 
     try:
         while True:
@@ -144,7 +144,7 @@ async def simulation_state_ws(websocket: WebSocket, robot_name: str):
                 pass
 
     except WebSocketDisconnect:
-        print(f"[STATE][SIM] disconnected: {robot_name}")
+        print(f"[SIM][STATE] disconnected: {robot_name}")
 
 
 # ==========================================================
@@ -155,7 +155,7 @@ async def robot_view_ws(websocket: WebSocket, robot_name: str):
     await websocket.accept()
 
     robot_viewers.setdefault(robot_name, set()).add(websocket)
-    print(f"[STATE][VIEW][ROBOT] viewer +1 ({robot_name})")
+    print(f"[ROBOT][STATE][VIEW] viewer +1 ({robot_name})")
 
     if robot_name in latest_robot_state:
         await websocket.send_json(latest_robot_state[robot_name])
@@ -167,7 +167,7 @@ async def robot_view_ws(websocket: WebSocket, robot_name: str):
         pass
     finally:
         robot_viewers[robot_name].discard(websocket)
-        print(f"[STATE][VIEW][ROBOT] viewer -1 ({robot_name})")
+        print(f"[ROBOT][STATE][VIEW] viewer -1 ({robot_name})")
 
 
 # ==========================================================
@@ -178,7 +178,7 @@ async def sim_view_ws(websocket: WebSocket, robot_name: str):
     await websocket.accept()
 
     sim_viewers.setdefault(robot_name, set()).add(websocket)
-    print(f"[STATE][VIEW][SIM] viewer +1 ({robot_name})")
+    print(f"[SIM][STATE][VIEW] viewer +1 ({robot_name})")
 
     if robot_name in latest_sim_state:
         await websocket.send_json(latest_sim_state[robot_name])
@@ -190,4 +190,4 @@ async def sim_view_ws(websocket: WebSocket, robot_name: str):
         pass
     finally:
         sim_viewers[robot_name].discard(websocket)
-        print(f"[STATE][VIEW][SIM] viewer -1 ({robot_name})")
+        print(f"[SIM][STATE][VIEW] viewer -1 ({robot_name})")

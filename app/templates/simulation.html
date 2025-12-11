@@ -13,7 +13,7 @@
 <div id="sidebar">
     <h3>Simulation Robot List</h3>
     {# 시뮬레이션 DB에서 가져온 로봇 이름 목록 #}
-    {% for name in robots %}
+    {% for name in robot_names %}
     <div class="robot-tab {% if name == initial_robot %}active{% endif %}"
             data-robot="{{ name }}">
             {{ name }}

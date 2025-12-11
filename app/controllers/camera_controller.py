@@ -7,7 +7,7 @@ from app.services.camera_service import (
     register_viewer,
     unregister_viewer,
 )
-
+import asyncio
 import json
 import base64
 
@@ -23,7 +23,7 @@ print("[CAMERA] Camera WebSocket router loaded")
 @router.websocket("/ws/robot/{robot_name}")
 async def robot_camera_ws(websocket: WebSocket, robot_name: str):
     await websocket.accept()
-    print(f"[CAMERA][ROBOT] connected {robot_name}")
+    print(f"[ROBOT][CAMERA] connected {robot_name}")
 
     try:
         while True:
@@ -34,7 +34,7 @@ async def robot_camera_ws(websocket: WebSocket, robot_name: str):
             await enqueue_frame("robot", robot_name, frame)
 
     except WebSocketDisconnect:
-        print(f"[CAMERA][ROBOT] disconnected {robot_name}")
+        print(f"[ROBOT][CAMERA] disconnected {robot_name}")
 
     except Exception as e:
         print(f"[CAMERA][ERROR] robot {robot_name}: {e}")
@@ -46,46 +46,48 @@ async def robot_camera_ws(websocket: WebSocket, robot_name: str):
 @router.websocket("/ws/sim/{robot_name}")
 async def simulation_camera_ws(websocket: WebSocket, robot_name: str):
     await websocket.accept()
-    print(f"[CAMERA][SIM] connected {robot_name}")
+    print(f"[SIM][CAMERA] connected {robot_name}")
 
     try:
         while True:
             msg = await websocket.receive()
+            # print("msg:", msg)
 
             # ------------------------------
             # 1) 바이너리 프레임 (JPEG/PNG)
             # ------------------------------
-            if msg["type"] == "websocket.receive.bytes":
+            # Starlette 는 binary 도 'websocket.receive' 로 들어오고
+            # msg 안에 'bytes' 키가 있으면 binary 프레임이다.
+            if msg["type"] == "websocket.receive" and "bytes" in msg:
                 frame = msg["bytes"]
-                print(f"[CAMERA][FRAME][SIM] {robot_name} binary size={len(frame)}")
+                print(f"[SIM][CAMERA][FRAME] {robot_name} binary size={len(frame)}")
                 await enqueue_frame("sim", robot_name, frame)
+                continue
 
             # ------------------------------
-            # 2) 텍스트(JSON, base64)
+            # 2) 텍스트(JSON + base64)
             # ------------------------------
-            elif msg["type"] == "websocket.receive.text":
+            if msg["type"] == "websocket.receive" and "text" in msg:
                 payload = json.loads(msg["text"])
 
-                # 시뮬쪽 약속: image / data 중 하나
                 b64 = payload.get("image") or payload.get("data")
                 if not b64:
-                    print(f"[CAMERA][SIM] no image field: {payload.keys()}")
+                    print(f"[SIM][CAMERA] no image field: {payload.keys()}")
                     continue
 
                 try:
                     frame = base64.b64decode(b64)
-                    print(f"[CAMERA][FRAME][SIM] {robot_name} base64 size={len(frame)}")
-                    # YOLO는 하지 않고 큐에만 넣기
-                    await enqueue_frame(robot_name, frame)
+                    print(f"[SIM][CAMERA][FRAME] {robot_name} base64 size={len(frame)}")
+                    await enqueue_frame("sim", robot_name, frame)
                 except Exception as e:
-                    print(f"[CAMERA][SIM][DECODE ERROR] {robot_name}: {e}")
+                    print(f"[SIM][CAMERA][DECODE ERROR] {robot_name}: {e}")
 
     except WebSocketDisconnect:
-        print(f"[CAMERA][SIM] disconnected {robot_name}")
+        print(f"[SIM][CAMERA] disconnected {robot_name}")
 
     except Exception as e:
-        print(f"[CAMERA][SIM] robot {robot_name}: {e}")
-        
+        print(f"[SIM][CAMERA] robot {robot_name}: {e}")
+
 # ==========================================================
 # 서버 → 실제 로봇 대시보드 (뷰어 전용)
 # ==========================================================
@@ -100,9 +102,9 @@ async def robot_viewer_ws(websocket: WebSocket, robot_name: str):
     if frame:
         try:
             await websocket.send_bytes(frame)
-            print(f"[CAMERA][VIEW][ROBOT] sent cached frame robot={robot_name}")
+            print(f"[ROBOT][CAMERA][VIEW] sent cached frame robot={robot_name}")
         except Exception as e:
-            print(f"[CAMERA][VIEW][ROBOT] cache send failed: {e}")
+            print(f"[ROBOT][CAMERA][VIEW] cache send failed: {e}")
 
     try:
         while True:
@@ -111,7 +113,7 @@ async def robot_viewer_ws(websocket: WebSocket, robot_name: str):
             await websocket.receive_text()
 
     except WebSocketDisconnect:
-        print(f"[CAMERA][VIEW][ROBOT] viewer disconnected ({robot_name})")
+        print(f"[ROBOT][CAMERA][VIEW] viewer disconnected ({robot_name})")
 
     finally:
         await unregister_viewer("robot", robot_name, websocket)
@@ -131,9 +133,9 @@ async def sim_viewer_ws(websocket: WebSocket, robot_name: str):
     if frame:
         try:
             await websocket.send_bytes(frame)
-            print(f"[CAMERA][VIEW][SIM] sent cached frame robot={robot_name}")
+            print(f"[SIM][CAMERA][VIEW] sent cached frame robot={robot_name}")
         except Exception as e:
-            print(f"[CAMERA][VIEW][SIM] cache send failed: {e}")
+            print(f"[SIM][CAMERA][VIEW] cache send failed: {e}")
 
     try:
         while True:
@@ -142,7 +144,7 @@ async def sim_viewer_ws(websocket: WebSocket, robot_name: str):
             await websocket.receive_text()
 
     except WebSocketDisconnect:
-        print(f"[CAMERA][VIEW][SIM] viewer disconnected ({robot_name})")
+        print(f"[SIM][CAMERA][VIEW] viewer disconnected ({robot_name})")
 
     finally:
         await unregister_viewer("sim", robot_name, websocket)
