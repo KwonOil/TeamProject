@@ -1,0 +1,67 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+}
+.container {
+    max-width: 600px;
+    margin: 80px auto;
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    text-align: center;
+}
+h1 {
+    margin-bottom: 8px;
+}
+.subtitle {
+    color: #555;
+    margin-bottom: 24px;
+}
+.user-info {
+    margin-bottom: 24px;
+    font-size: 14px;
+    color: #666;
+}
+.btn-row {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.btn-link {
+    display: inline-block;
+    padding: 12px 24px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+}
+.btn-robot {
+    background-color: #2e7d32; /* 녹색 */
+    color: #fff;
+}
+.btn-sim {
+    background-color: #1565c0; /* 파란색 */
+    color: #fff;
+}
+.btn-robot:hover {
+    background-color: #1b5e20;
+}
+.btn-sim:hover {
+    background-color: #0d47a1;
+}
+.logout-link {
+    font-size: 13px;
+    color: #999;
+}
+.logout-link a {
+    color: #666;
+    text-decoration: none;
+}
+.logout-link a:hover {
+    text-decoration: underline;
+}

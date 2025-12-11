@@ -5,3 +5,11 @@ python-multipart
 SQLAlchemy
 pymysql
 jinja2
+ultralytics
+opencv-python
+numpy
+torch
+torchvision
+itsdangerous
+hashlib
+httpx

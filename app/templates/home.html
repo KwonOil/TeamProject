@@ -1,0 +1,41 @@
+<!-- app/templates/home.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>대시보드 선택</title>
+    <link rel="stylesheet" href="/static/css/home.css">
+
+</head>
+<body>
+
+<div class="container">
+    <h1>대시보드 선택</h1>
+    <div class="subtitle">
+        사용 중인 시스템을 선택해 주세요.
+    </div>
+
+    <div class="user-info">
+        로그인 계정: <strong>{{ username }}</strong>
+        (role: {{ role }})
+    </div>
+
+    <div class="btn-row">
+        <!-- 실제 로봇 대시보드로 이동 -->
+        <a href="/dashboard" class="btn-link btn-robot">
+            실제 로봇 대시보드
+        </a>
+
+        <!-- 시뮬레이션 대시보드로 이동 -->
+        <a href="/simulation" class="btn-link btn-sim">
+            시뮬레이션 대시보드
+        </a>
+    </div>
+
+    <div class="logout-link">
+        <a href="/logout">로그아웃</a>
+    </div>
+</div>
+
+</body>
+</html>

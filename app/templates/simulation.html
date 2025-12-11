@@ -1,30 +1,32 @@
-<!-- app/templates/dashboard.html -->
+<!-- app/templates/simulation.html -->
 <!DOCTYPE html>
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/static/css/dashboard.css">
-    <script src="/static/js/dashboard.js" defer></script>
+    <!-- 시뮬레이션 전용 JS -->
+    <script src="/static/js/simulation.js" defer></script>
 </head>
 
 <body>
 
 <div id="sidebar">
-    <h3>Robot List</h3>
-    {% for name in robot_names %}
-        <div class="robot-tab {% if name == initial_robot %}active{% endif %}"
-             data-robot="{{name}}">
-            {{name}}
+    <h3>Simulation Robot List</h3>
+    {# 시뮬레이션 DB에서 가져온 로봇 이름 목록 #}
+    {% for name in robots %}
+    <div class="robot-tab {% if name == initial_robot %}active{% endif %}"
+            data-robot="{{ name }}">
+            {{ name }}
         </div>
     {% endfor %}
 </div>
 
 <div id="main">
     <a href="/home">선택 화면으로 이동</a>
-    <h2>Robot Dashboard</h2>
+    <h2>Simulation Dashboard</h2>
     <div>선택된 로봇: <span id="currentRobotName">{{ initial_robot }}</span></div>
 
-    <!-- 실시간 영상 (YOLO 결과) -->
+    <!-- 실시간 영상 (YOLO 결과용 오버레이 포함) -->
     <div style="position: relative; width:640px; height:480px;">
         <img id="cam" width="640" height="480"/>
         <canvas id="overlay"
@@ -42,12 +44,7 @@
         <div>속도 (m/s): <span id="velText">-</span></div>
         <div>각속도 (rad/s): <span id="angVelText">-</span></div>
     </div>
-    <!-- 로봇 조작 페이지로 이동 -->
-    <button id="controlBtn" class="path-btn" style="margin-top:8px;">
-        로봇 조작
-    </button>
-
-
+    
     <!-- 라이다 요약 -->
     <div class="card">
         <h3>현재 라이다 상태</h3>
@@ -58,12 +55,14 @@
         </canvas>
     </div>
 
+    <!-- 필요하면 경로 페이지로 이동 버튼 등 추가 가능 -->
     <button id="movePathBtn" class="path-btn">이동경로 보기</button>
 
 </div>
 
 <script>
-    window.INITIAL_ROBOT_NAME = "{{ initial_robot }}";
+    // JS 에서 최초 로봇 이름을 사용할 수 있게 전역으로 전달
+    window.INITIAL_ROBOT_NAME = "{{ initial_robot or '' }}";
 </script>
 
 </body>

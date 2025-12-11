@@ -1,0 +1,60 @@
+<!-- app/templates/control.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Robot Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="/static/js/control.js" defer></script>
+</head>
+
+<body>
+
+<div id="sidebar">
+    <h3>Robot List</h3>
+    {% for name in robot_names %}
+        <div class="robot-tab {% if name == initial_robot %}active{% endif %}"
+             data-robot="{{ name }}">
+            {{ name }}
+        </div>
+    {% endfor %}
+</div>
+
+<div id="main">
+    <h2>Robot Control</h2>
+
+    <div>선택된 로봇: <span id="currentRobotName">{{ initial_robot }}</span></div>
+
+    <div class="card">
+        <h3>로봇 이동</h3>
+
+        <button onclick="sendGoal('waiting')">대기장소</button>
+
+        <h4>입구</h4>
+        <button onclick="sendGoal('entrance_1')">입구 1</button>
+        <button onclick="sendGoal('entrance_2')">입구 2</button>
+        <button onclick="sendGoal('entrance_3')">입구 3</button>
+
+        <h4>출구</h4>
+        <button onclick="sendGoal('exit_1')">출구 1</button>
+        <button onclick="sendGoal('exit_2')">출구 2</button>
+        <button onclick="sendGoal('exit_3')">출구 3</button>
+
+        <div style="margin-top: 20px;">
+            <button onclick="window.location.href='/dashboard'" class="path-btn">
+                대시보드로 돌아가기
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    // JS 에서 현재 로봇 이름을 사용하기 위해 전역 변수로 노출
+    window.INITIAL_ROBOT_NAME = "{{ initial_robot }}";
+</script>
+
+</body>
+</html>

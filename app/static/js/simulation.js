@@ -1,7 +1,22 @@
-// app/static/js/dashboard.js
-let currentRobot = window.INITIAL_ROBOT_NAME || "";
+// app/static/js/simulation.js
+let currentRobot = window.INITIAL_ROBOT_NAME;
 let camWs = null;
 let stateWs = null;
+
+window.addEventListener("DOMContentLoaded", () => {
+    if (!currentRobot) {
+        const firstTab = document.querySelector(".robot-tab");
+        if (firstTab) {
+            currentRobot = firstTab.dataset.robot;
+            document.getElementById("currentRobotName").textContent = currentRobot;
+        }
+    }
+
+    if (currentRobot) {
+        openCameraWS();
+        openStateWS();
+    }
+});
 
 /* =========================
    YOLO 박스 그리기
@@ -42,7 +57,7 @@ function drawDetections(detections) {
 function openCameraWS() {
     if (camWs) camWs.close();
 
-    const url = `ws://${location.host}/camera/view/robot/${currentRobot}`;
+    const url = `ws://${location.host}/camera/view/sim/${currentRobot}`;
     console.log("[CAMERA][WS]", url);
 
     camWs = new WebSocket(url);
@@ -74,7 +89,7 @@ function openCameraWS() {
 function openStateWS() {
     if (stateWs) stateWs.close();
 
-    const url = `ws://${location.host}/state/view/robot/${currentRobot}`;
+    const url = `ws://${location.host}/state/view/sim/${currentRobot}`;
     console.log("[STATE][WS]", url);
 
     stateWs = new WebSocket(url);
@@ -90,6 +105,14 @@ function openStateWS() {
 }
 
 /* =========================
+   Small Value Clamp
+========================= */
+function clampSmallValue(value, epsilon = 0.0001) {
+    if (typeof value !== "number") return value;
+    return Math.abs(value) <= epsilon ? 0 : value;
+}
+
+/* =========================
    상태 메시지 처리
 ========================= */
 function handleState(msg) {
@@ -102,22 +125,28 @@ function handleState(msg) {
 
     // odometry
     if (msg.type === "odom") {
+        const linear = clampSmallValue(msg.data.linear_vel.x);
+        const angular = clampSmallValue(msg.data.angular_vel.z);
+        
         document.getElementById("posText").textContent =
             `${msg.data.position.x.toFixed(2)}, ${msg.data.position.y.toFixed(2)}`;
+        
+        document.getElementById("velText").textContent =
+            linear.toFixed(2);
+
+        document.getElementById("angVelText").textContent =
+            angular.toFixed(2);
     }
 
     // cmd_vel
     if (msg.type === "cmd_vel") {
-        document.getElementById("velText").textContent =
-            msg.data.linear_vel.x.toFixed(2);
-
-        document.getElementById("angVelText").textContent =
-            msg.data.angular_vel.z.toFixed(2);
+        pass
     }
+
     // lidar sensor
     if (msg.type === "scan") {
         drawLidar(msg.data.ranges);
-        // console.log('msg.data.ranges : ',msg.data.ranges);
+        console.log('msg.data.ranges : ',msg.data.ranges);
     }
 }
 
@@ -224,21 +253,4 @@ document.querySelectorAll(".robot-tab").forEach(tab => {
         openCameraWS();
         openStateWS();
     });
-});
-
-window.addEventListener("DOMContentLoaded", () => {
-    if (currentRobot) {
-        openCameraWS();
-        openStateWS();
-    }
-    
-    // 조작 페이지로 이동 버튼
-    const controlBtn = document.getElementById("controlBtn");
-    if (controlBtn) {
-        controlBtn.addEventListener("click", () => {
-            if (!currentRobot) return;
-            // 현재 선택된 로봇 이름을 쿼리로 넘겨준다.
-            window.location.href = `/control?robot=${encodeURIComponent(currentRobot)}`;
-        });
-    }
 });

@@ -1,32 +1,37 @@
 # app/controllers/dashboard_controller.py
 from fastapi import APIRouter, Request, Depends
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
+from app.models.robot_state_history import RobotStateHistory
 from app.config.database import get_db
-from app.models.robot_data import RobotData
 
 router = APIRouter(tags=["dashboard"])
 templates = Jinja2Templates(directory="app/templates")
 
 
-@router.get("/dashboard")
+@router.get("/dashboard", response_class=HTMLResponse, response_model=None)
 def dashboard(request: Request, db: Session = Depends(get_db)):
     """
-    대시보드 메인 페이지
-    - DB에서 robot_name 목록을 읽어와서 탭으로 표시
-    - 실제 상태 데이터는 JS가 /robot/status 를 주기적으로 호출
+    실제 로봇 대시보드 페이지.
+    - 반드시 로그인 되어 있어야 접근 가능.
+    - 로그인은 SessionMiddleware를 통해 request.session에서 확인한다.
     """
-    rows = (
-        db.query(RobotData.robot_name)
+    if not request.session.get("user_id"):
+        # 로그인 안 되어 있으면 /login 으로 보냄
+        return RedirectResponse(url="/login", status_code=303)
+
+    # 로봇 이름만 중복 없이 가져오기
+    robot_names = (
+        db.query(RobotStateHistory.robot_name)
         .distinct()
-        .order_by(RobotData.robot_name.asc())
+        .order_by(RobotStateHistory.robot_name)
         .all()
     )
-    robot_names = [r[0] for r in rows]
+    robot_names = [r[0] for r in robot_names]
 
-    # 로봇이 하나도 없을 수도 있으니 기본 선택값은 조건부로 처리
-    initial_robot = robot_names[0] if robot_names else ""
+    initial_robot = robot_names[0] if robot_names else None
 
     return templates.TemplateResponse(
         "dashboard.html",
