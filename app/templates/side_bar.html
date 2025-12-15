@@ -1,0 +1,50 @@
+<!-- app/templates/dashboard.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}Robot Dashboard{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    
+    {% block head %}{% endblock %}
+</head>
+
+<body>
+
+<!-- =======================
+     LEFT SIDEBAR (고정)
+======================= -->
+<div id="sidebar">
+    <h3>Robot List</h3>
+
+    {% for name in robot_names %}
+        <div class="robot-tab
+             {% if name == selected_robot %}active{% endif %}"
+             data-robot="{{ name }}">
+            {{ name }}
+        </div>
+    {% endfor %}
+</div>
+
+<!-- =======================
+     MAIN CONTENT
+======================= -->
+<div id="main">
+    {% block content %}{% endblock %}
+</div>
+
+<!-- =======================
+     GLOBAL STATE
+======================= -->
+<script>
+        window.AppState = {
+            selectedRobot: "{{ selected_robot }}"
+    };
+</script>
+
+{% block scripts %}{% endblock %}
+
+</body>
+</html>

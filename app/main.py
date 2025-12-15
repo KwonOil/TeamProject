@@ -20,6 +20,8 @@ from app.controllers.simulation_controller import router as simulation_router
 from app.services.simulation_history_worker import simulation_history_worker
 
 from app.controllers.control_controller import router as control_router
+from app.controllers.robot_state_controller import router as robot_state_router
+from app.controllers.map_controller import router as map_router
 
 app = FastAPI(title="Robot Dashboard")
 
@@ -41,6 +43,8 @@ app.include_router(dashboard_router)
 app.include_router(path_router)
 app.include_router(control_router)
 app.include_router(simulation_router)
+app.include_router(robot_state_router)
+app.include_router(map_router)
 
 # 정적 파일
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

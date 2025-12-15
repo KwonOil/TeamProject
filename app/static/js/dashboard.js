@@ -1,70 +1,53 @@
+// =========================================================
 // app/static/js/dashboard.js
-let currentRobot = window.INITIAL_ROBOT_NAME || "";
-let camWs = null;
-let stateWs = null;
+// 역할:
+// - 전역 로봇 상태(AppState) 관리
+// - Camera / State WebSocket 연결
+// - 로봇 상태 UI 업데이트
+// - 로봇 선택 탭 처리
+// - 로봇 조작 패널 토글(UI)
+// =========================================================
 
 /* =========================
-   YOLO 박스 그리기
+   Global State Access
 ========================= */
-function drawDetections(detections) {
-    if (!Array.isArray(detections)) return;
-
-    const canvas = document.getElementById("overlay");
-    const ctx = canvas.getContext("2d");
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    ctx.strokeStyle = "red";
-    ctx.fillStyle = "red";
-    ctx.lineWidth = 2;
-    ctx.font = "14px Arial";
-
-    detections.forEach(det => {
-        const [x1, y1, x2, y2] = det.bbox;
-        const w = x2 - x1;
-        const h = y2 - y1;
-
-        ctx.strokeRect(x1, y1, w, h);
-
-        const label = `${det.class} ${(det.conf * 100).toFixed(1)}%`;
-        const textWidth = ctx.measureText(label).width;
-
-        ctx.fillRect(x1, y1 - 18, textWidth + 6, 16);
-        ctx.fillStyle = "white";
-        ctx.fillText(label, x1 + 3, y1 - 5);
-        ctx.fillStyle = "red";
-    });
+function getCurrentRobot() {
+    return window.AppState?.selectedRobot || "";
 }
+
+function setCurrentRobot(robot) {
+    window.AppState.selectedRobot = robot;
+}
+
+/* =========================
+   WebSocket Handles
+========================= */
+let camWs = null;
+let stateWs = null;
 
 /* =========================
    Camera WebSocket
 ========================= */
 function openCameraWS() {
+    const robot = getCurrentRobot();
+    if (!robot) return;
+
     if (camWs) camWs.close();
 
-    const url = `ws://${location.host}/camera/view/robot/${currentRobot}`;
+    const url = `ws://${location.host}/camera/view/robot/${encodeURIComponent(robot)}`;
     console.log("[CAMERA][WS]", url);
 
     camWs = new WebSocket(url);
     camWs.binaryType = "arraybuffer";
 
     camWs.onmessage = e => {
-        if (e.data instanceof ArrayBuffer) {
-            const blob = new Blob([e.data], { type: "image/jpeg" });
-            document.getElementById("cam").src =
-                URL.createObjectURL(blob);
-            return;
-        }
+        if (!(e.data instanceof ArrayBuffer)) return;
 
-        try {
-            const msg = JSON.parse(e.data);
-            if (msg.type === "yolo") {
-                const dets = Array.isArray(msg.detections)
-                    ? msg.detections
-                    : msg.detections?.detections;
-                drawDetections(dets);
-            }
-        } catch (_) {}
+        const imgEl = document.getElementById("cam");
+        if (!imgEl) return;
+
+        const blob = new Blob([e.data], { type: "image/jpeg" });
+        imgEl.src = URL.createObjectURL(blob);
     };
 }
 
@@ -72,53 +55,110 @@ function openCameraWS() {
    State WebSocket
 ========================= */
 function openStateWS() {
+    const robot = getCurrentRobot();
+    if (!robot) return;
+
     if (stateWs) stateWs.close();
 
-    const url = `ws://${location.host}/state/view/robot/${currentRobot}`;
+    const url = `ws://${location.host}/state/view/robot/${encodeURIComponent(robot)}`;
     console.log("[STATE][WS]", url);
 
     stateWs = new WebSocket(url);
+
     stateWs.onmessage = e => {
         try {
-            const msg = JSON.parse(e.data);
-            console.log("stateWs msg : ",msg);
-            handleState(msg);
+            handleState(JSON.parse(e.data));
         } catch (err) {
-            console.error("[STATE][PARSE ERROR]", err, e.data);
+            console.error("[STATE][PARSE ERROR]", err);
         }
     };
 }
 
 /* =========================
-   상태 메시지 처리
+   State Handler
 ========================= */
 function handleState(msg) {
+    console.log("[STATE]", msg);
 
-    // battery
+    // 배터리
     if (msg.type === "battery") {
         document.getElementById("batteryText").textContent =
-            (msg.data.percentage).toFixed(1) + "%";
+            `${Number(msg.data.percentage).toFixed(1)}%`;
     }
 
-    // odometry
+    // 위치 + 속도 (odom)
     if (msg.type === "odom") {
-        document.getElementById("posText").textContent =
-            `${msg.data.position.x.toFixed(2)}, ${msg.data.position.y.toFixed(2)}`;
-    }
+        const pos = msg.data.position;
+        const twist = msg.data.twist;
 
-    // cmd_vel
-    if (msg.type === "cmd_vel") {
-        document.getElementById("velText").textContent =
-            msg.data.linear_vel.x.toFixed(2);
+        if (pos) {
+            document.getElementById("posText").textContent =
+                `${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}`;
 
-        document.getElementById("angVelText").textContent =
-            msg.data.angular_vel.z.toFixed(2);
+            // 맵 표시
+            if (window.MapView) {
+                window.MapView.updatePose(pos.x, pos.y);
+            }
+        }
+
+        if (twist) {
+            // ✅ 실제 이동 속도
+            document.getElementById("velText").textContent =
+                twist.linear.x.toFixed(2);
+
+            document.getElementById("angVelText").textContent =
+                twist.angular.z.toFixed(2);
+        }
     }
-    // lidar sensor
-    if (msg.type === "scan") {
-        drawLidar(msg.data.ranges);
-        // console.log('msg.data.ranges : ',msg.data.ranges);
-    }
+}
+
+/* =========================
+   Control Panel Toggle (UI ONLY)
+========================= */
+function setupControlToggle() {
+    const btn = document.getElementById("toggleControlBtn");
+    const panel = document.getElementById("controlPanel");
+
+    if (!btn || !panel) return;
+
+    btn.addEventListener("click", () => {
+        const opened = panel.style.display === "block";
+        panel.style.display = opened ? "none" : "block";
+        btn.textContent = opened ? "로봇 조작" : "조작 패널 닫기";
+    });
+}
+
+/* =========================
+   Robot Tabs
+========================= */
+function setupRobotTabs() {
+    document.querySelectorAll(".robot-tab").forEach(tab => {
+        tab.addEventListener("click", async () => {
+            const robot = tab.dataset.robot;
+
+            // UI
+            document.querySelectorAll(".robot-tab")
+                .forEach(t => t.classList.remove("active"));
+            tab.classList.add("active");
+
+            // State
+            setCurrentRobot(robot);
+
+            document.getElementById("currentRobotName").textContent = robot;
+            document.getElementById("controlRobotName").textContent = robot;
+
+            // Server session
+            await fetch("/api/select_robot", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ robot })
+            });
+
+            // Reconnect WS
+            openCameraWS();
+            openStateWS();
+        });
+    });
 }
 
 /* =========================
@@ -204,41 +244,13 @@ function drawLidar(scan) {
 }
 
 /* =========================
-   로봇 탭
+   Init
 ========================= */
-document.querySelectorAll(".robot-tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-
-        // ✅ 모든 탭에서 active 제거
-        document.querySelectorAll(".robot-tab")
-            .forEach(t => t.classList.remove("active"));
-
-        // ✅ 현재 클릭한 탭만 active
-        tab.classList.add("active");
-
-        // ✅ 로봇 이름 변경
-        currentRobot = tab.dataset.robot;
-        document.getElementById("currentRobotName").textContent = currentRobot;
-
-        // ✅ WebSocket 재연결
-        openCameraWS();
-        openStateWS();
-    });
-});
-
 window.addEventListener("DOMContentLoaded", () => {
-    if (currentRobot) {
+    if (getCurrentRobot()) {
         openCameraWS();
         openStateWS();
     }
-    
-    // 조작 페이지로 이동 버튼
-    const controlBtn = document.getElementById("controlBtn");
-    if (controlBtn) {
-        controlBtn.addEventListener("click", () => {
-            if (!currentRobot) return;
-            // 현재 선택된 로봇 이름을 쿼리로 넘겨준다.
-            window.location.href = `/control?robot=${encodeURIComponent(currentRobot)}`;
-        });
-    }
+    setupControlToggle();
+    setupRobotTabs();
 });

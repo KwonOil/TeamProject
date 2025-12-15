@@ -1,28 +1,17 @@
 <!-- app/templates/dashboard.html -->
-<!DOCTYPE html>
-<html>
-<head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/static/css/dashboard.css">
-    <script src="/static/js/dashboard.js" defer></script>
-</head>
+{% extends "side_bar.html" %}
 
-<body>
+{% block title %}Dashboard{% endblock %}
 
-<div id="sidebar">
-    <h3>Robot List</h3>
-    {% for name in robot_names %}
-        <div class="robot-tab {% if name == initial_robot %}active{% endif %}"
-             data-robot="{{name}}">
-            {{name}}
-        </div>
-    {% endfor %}
-</div>
+{% block content %}
 
-<div id="main">
+<h2>Dashboard</h2>
+
+
+<div id="dashboard-content">
     <a href="/home">선택 화면으로 이동</a>
     <h2>Robot Dashboard</h2>
-    <div>선택된 로봇: <span id="currentRobotName">{{ initial_robot }}</span></div>
+    <div>선택된 로봇: <span id="currentRobotName">{{ selected_robot }}</span></div>
 
     <!-- 실시간 영상 (YOLO 결과) -->
     <div style="position: relative; width:640px; height:480px;">
@@ -33,6 +22,22 @@
                 style="position:absolute; left:0; top:0;">
         </canvas>
     </div>
+    
+    <!-- ==========================================================
+        맵 표시 영역 (1단계)
+        - 배경: SLAM map 이미지
+        - 오버레이: 로봇 위치를 점으로 표시
+    ========================================================== -->
+    <div class="card" style="margin-bottom: 16px;">
+        <h3>맵 / 로봇 위치</h3>
+
+        <!-- canvas는 JS에서 이미지 크기에 맞춰 자동으로 크기를 설정 -->
+        <canvas id="mapCanvas" style="border: 1px solid #ccc; max-width: 100%;"></canvas>
+
+        <div style="margin-top: 8px; font-size: 0.9em; opacity: 0.85;">
+            Map: <span id="mapStatusText">loading...</span>
+        </div>
+    </div>
 
     <!-- 로봇 상태 -->
     <div class="card">
@@ -42,10 +47,37 @@
         <div>속도 (m/s): <span id="velText">-</span></div>
         <div>각속도 (rad/s): <span id="angVelText">-</span></div>
     </div>
-    <!-- 로봇 조작 페이지로 이동 -->
-    <button id="controlBtn" class="path-btn" style="margin-top:8px;">
+
+    <!-- 로봇 조작 버튼 -->
+    {% if user.role == "admin" %}
+    <button id="toggleControlBtn" class="path-btn" style="margin-top:8px;">
         로봇 조작
     </button>
+    {% endif %}
+
+    <!-- ===============================
+     로봇 조작 패널 (처음엔 숨김)
+    =============================== -->
+    <div id="controlPanel" class="card" style="display:none; margin-top:16px;">
+        <h3>로봇 조작</h3>
+
+        <div style="margin-bottom:8px;">
+            현재 제어 대상:
+            <strong><span id="controlRobotName">{{ selected_robot }}</span></strong>
+        </div>
+
+        <button id="btn-wait">대기장소</button>
+
+        <h4>입구</h4>
+        <button id="btn-entrance-1">입구 1</button>
+        <button id="btn-entrance-2">입구 2</button>
+        <button id="btn-entrance-3">입구 3</button>
+
+        <h4>출구</h4>
+        <button id="btn-exit-1">출구 1</button>
+        <button id="btn-exit-2">출구 2</button>
+        <button id="btn-exit-3">출구 3</button>
+    </div>
 
 
     <!-- 라이다 요약 -->
@@ -62,9 +94,10 @@
 
 </div>
 
-<script>
-    window.INITIAL_ROBOT_NAME = "{{ initial_robot }}";
-</script>
+{% endblock %}
 
-</body>
-</html>
+{% block scripts %}
+    <script src="/static/js/dashboard.js"></script>
+    <script src="/static/js/map_view.js"></script>
+    <script src="/static/js/control.js"></script>
+{% endblock %}

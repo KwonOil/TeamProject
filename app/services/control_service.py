@@ -45,26 +45,29 @@ async def send_control_command(robot_name: str, command: dict) -> bool:
     반환값:
     - True  : 전송 성공
     - False : 로봇 미연결 또는 전송 실패
+
+    변경점:
+    - WebSocket 조회와 실제 전송을 하나의 Lock 범위 안에 넣어
+      전송 중 소켓이 바뀌는 race condition 을 방지한다.
     """
     async with _control_lock:
         ws = _control_sockets.get(robot_name)
 
-    if ws is None:
-        print(f"[CONTROL][WARN] robot '{robot_name}' is not connected")
-        return False
+        if ws is None:
+            print(f"[CONTROL][WARN] robot '{robot_name}' is not connected")
+            return False
 
-    try:
-        await ws.send_json(command)
-        print(f"[CONTROL][SEND] robot={robot_name} cmd={command}")
-        return True
+        try:
+            await ws.send_json(command)
+            print(f"[CONTROL][SEND] robot={robot_name} cmd={command}")
+            return True
 
-    except Exception as e:
-        print(f"[CONTROL][ERROR] send failed robot={robot_name}: {e}")
+        except Exception as e:
+            print(f"[CONTROL][ERROR] send failed robot={robot_name}: {e}")
 
-        # 실패한 소켓은 제거 (유령 연결 방지)
-        async with _control_lock:
+            # 실패한 소켓은 제거 (유령 연결 방지)
             cur = _control_sockets.get(robot_name)
             if cur is ws:
                 del _control_sockets[robot_name]
 
-        return False
+            return False

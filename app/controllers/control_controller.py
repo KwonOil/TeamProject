@@ -1,27 +1,23 @@
-# app/controllers/control_controller.py
-
 from fastapi import (
     APIRouter,
-    WebSocket,
-    WebSocketDisconnect,
     Request,
-    HTTPException,
     Depends,
+    HTTPException,
     Query,
+    WebSocket,
 )
-from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from app.config.database import SessionLocal
-from app.models.robot_state_history import RobotStateHistory
+from app.config.database import get_db
 from app.models.user import User
 from app.controllers.auth_controller import get_current_user
-
+from app.services.robot_service import get_distinct_robot_names
 from app.services.control_service import (
+    send_control_command,
     register_robot_control_ws,
     unregister_robot_control_ws,
-    send_control_command,
 )
 
 router = APIRouter(prefix="/control", tags=["control"])
@@ -29,157 +25,99 @@ templates = Jinja2Templates(directory="app/templates")
 
 
 # ==========================================================
-# DB 세션 의존성
-# ==========================================================
-def get_db():
-    """
-    실제 로봇 DB 세션.
-    controller 레이어에서만 사용.
-    """
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-# ==========================================================
-# ✅ 이동 좌표 테이블 (여기만 수정하면 됨)
+# 이동 좌표 테이블
 # ==========================================================
 WAYPOINTS = {
-    # 대기 장소
-    "wait": {"x": 0.5, "y": 0.0, "yaw": 0.0},
+    "wait": {"x": -1.22, "y": 0.16, "yaw": 0.0},
 
-    # 입구
-    "entrance_1": {"x": 1.5, "y": 0.0, "yaw": 0.0},
-    "entrance_2": {"x": 3.0, "y": 0.0, "yaw": 0.0},
-    "entrance_3": {"x": 4.5, "y": 0.0, "yaw": 0.0},
-
-    # 출구
-    "exit_1": {"x": 1.5, "y": 1.0, "yaw": 0.0},
-    "exit_2": {"x": 3.0, "y": 1.0, "yaw": 0.0},
-    "exit_3": {"x": 4.5, "y": 1.0, "yaw": 0.0},
+    "entrance_1": {"x": 0.0, "y":  0.6, "yaw": 0.0},
+    "entrance_2": {"x": 0.0, "y":  0.0, "yaw": 0.0},
+    "entrance_3": {"x": 0.0, "y": -0.7, "yaw": 0.0},
+    
+    "exit_1": {"x": 1.7, "y": 0.6, "yaw": 0.0},
+    "exit_2": {"x": 1.7, "y": -0.17, "yaw": 0.0},
+    "exit_3": {"x": 1.7, "y": -0.72, "yaw": 0.0},
 }
 
 
 # ==========================================================
-# 1) 로봇 조작 페이지 (GET)
-#    /control?robot=tb3_1
+# 1) 로봇 조작 페이지
 # ==========================================================
-@router.get("", response_class=HTMLResponse, response_model=None)
+@router.get("")
 def control_page(
     request: Request,
-    robot: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """
-    로봇 조작 UI 페이지.
-
-    - 로그인 필수
-    - 왼쪽 로봇 탭 목록: robot_state_history 기준
-    - ?robot=tb3_1 로 초기 선택 가능
-    """
-
-    # ✅ 로그인 체크
     if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        return RedirectResponse("/login", status_code=303)
 
-    # DB에 존재하는 로봇 목록
-    rows = (
-        db.query(RobotStateHistory.robot_name)
-        .distinct()
-        .order_by(RobotStateHistory.robot_name.asc())
-        .all()
-    )
-    robot_names = [r[0] for r in rows]
+    robot_names = get_distinct_robot_names(db)
 
-    # 초기 선택 로봇 결정
-    if robot and robot in robot_names:
-        initial_robot = robot
-    else:
-        initial_robot = robot_names[0] if robot_names else ""
+    selected_robot = request.session.get("selected_robot")
+    if selected_robot not in robot_names:
+        selected_robot = robot_names[0] if robot_names else None
+        request.session["selected_robot"] = selected_robot
 
     return templates.TemplateResponse(
         "control.html",
         {
             "request": request,
             "robot_names": robot_names,
-            "initial_robot": initial_robot,
+            "selected_robot": selected_robot,
             "user": user,
         },
     )
 
 
 # ==========================================================
-# 2) 대시보드 → 서버 : 이동 명령 API
-#    POST /control/api/{robot_name}/goto?target=wait
+# 2) 이동 명령 API
 # ==========================================================
 @router.post("/api/{robot_name}/goto")
 async def api_goto(
     robot_name: str,
-    target: str = Query(..., description="이동할 목표 이름"),
+    target: str = Query(...),
     user: User = Depends(get_current_user),
 ):
-    """
-    지정된 로봇에게 Nav2 이동 명령을 전송한다.
-
-    - 로그인 필수
-    - target 은 WAYPOINTS 키여야 함
-    - 실제 전송은 control_service 가 담당
-    """
-
-    # ✅ 로그인 확인
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    # ✅ 좌표 존재 여부 확인
     if target not in WAYPOINTS:
         raise HTTPException(status_code=400, detail="Unknown target")
-
-    pose = WAYPOINTS[target]
 
     command = {
         "type": "nav_goal",
         "target": target,
-        "pose": pose,
+        "pose": WAYPOINTS[target],
         "requested_by": user.username,
     }
 
-    # ✅ 로봇 WebSocket으로 명령 전송
     ok = await send_control_command(robot_name, command)
     if not ok:
         raise HTTPException(status_code=503, detail="Robot not connected")
 
-    return {
-        "status": "ok",
-        "robot": robot_name,
-        "target": target,
-    }
+    return {"status": "ok"}
 
 
 # ==========================================================
 # 3) 실제 로봇 → 서버 : 제어 WebSocket
-#    ws://host/control/ws/robot/{robot_name}
 # ==========================================================
 @router.websocket("/ws/robot/{robot_name}")
 async def robot_control_ws(websocket: WebSocket, robot_name: str):
     """
     실제 로봇이 접속하는 제어 WebSocket.
-
-    - 서버 → 로봇 : nav_goal JSON 전송
-    - 로봇 → 서버 : currently unused (heartbeat 용)
+    - 서버 → 로봇 : 이동 명령 전송
     """
     await websocket.accept()
     await register_robot_control_ws(robot_name, websocket)
-    print(f"[CONTROL][WS][ROBOT] connected {robot_name}")
+    print(f"[ROBOT][CONTROL][WS] connected {robot_name}")
 
     try:
         while True:
-            msg = await websocket.receive()
-            if msg["type"] == "websocket.disconnect":
-                break
-            # 현재는 payload 사용 안 함
+            # 현재는 로봇 → 서버 메시지는 사용 안 함
+            await websocket.receive_text()
+    except Exception:
+        pass
     finally:
         await unregister_robot_control_ws(robot_name, websocket)
-        print(f"[CONTROL][WS][ROBOT] disconnected {robot_name}")
+        print(f"[ROBOT][CONTROL][WS] disconnected {robot_name}")

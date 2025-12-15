@@ -1,60 +1,84 @@
-<!-- app/templates/control.html -->
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Robot Control</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+{# app/templates/control.html #}
+{% extends "side_bar.html" %}
 
-    <link rel="stylesheet" href="/static/css/dashboard.css">
-    <script src="/static/js/control.js" defer></script>
-</head>
+{% block title %}Robot Control{% endblock %}
 
-<body>
+{% block content %}
+<h2>Robot Control</h2>
 
-<div id="sidebar">
-    <h3>Robot List</h3>
-    {% for name in robot_names %}
-        <div class="robot-tab {% if name == initial_robot %}active{% endif %}"
-             data-robot="{{ name }}">
-            {{ name }}
-        </div>
-    {% endfor %}
+<div style="margin-bottom: 12px;">
+    <button onclick="window.location.href='/dashboard'" class="path-btn">
+        대시보드로 돌아가기
+    </button>
 </div>
 
-<div id="main">
-    <h2>Robot Control</h2>
+<!-- ==========================================================
+    현재 선택된 로봇 표시
+    - JS에서 탭을 클릭하면 이 span 내용을 갱신한다.
+========================================================== -->
+<div style="margin-bottom: 12px;">
+    선택된 로봇:
+    <span id="currentRobotName">{{ selected_robot }}</span>
+</div>
 
-    <div>선택된 로봇: <span id="currentRobotName">{{ initial_robot }}</span></div>
+<!-- ==========================================================
+    실시간 상태 표시 카드
+    - dashboard에서 하던 것과 동일한 데이터를 control에서도 보여주기 위한 영역
+    - JS(control.js)가 /state/view/robot/{robot} WebSocket에서 수신한 메시지로 업데이트한다.
+========================================================== -->
+<div class="card" style="margin-bottom: 16px;">
+    <h3>현재 상태</h3>
 
-    <div class="card">
-        <h3>로봇 이동</h3>
+    <div>배터리: <span id="batteryText">-</span></div>
+    <div>위치 (x, y): <span id="posText">-</span></div>
+    <div>속도 (m/s): <span id="velText">-</span></div>
+    <div>각속도 (rad/s): <span id="angVelText">-</span></div>
 
-        <button onclick="sendGoal('waiting')">대기장소</button>
-
-        <h4>입구</h4>
-        <button onclick="sendGoal('entrance_1')">입구 1</button>
-        <button onclick="sendGoal('entrance_2')">입구 2</button>
-        <button onclick="sendGoal('entrance_3')">입구 3</button>
-
-        <h4>출구</h4>
-        <button onclick="sendGoal('exit_1')">출구 1</button>
-        <button onclick="sendGoal('exit_2')">출구 2</button>
-        <button onclick="sendGoal('exit_3')">출구 3</button>
-
-        <div style="margin-top: 20px;">
-            <button onclick="window.location.href='/dashboard'" class="path-btn">
-                대시보드로 돌아가기
-            </button>
-        </div>
+    <!-- 상태가 안 뜰 때 원인 파악을 위한 간단한 연결 상태 표시 -->
+    <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
+        State WS: <span id="stateConnText">disconnected</span>
     </div>
 </div>
 
+<!-- ==========================================================
+    맵 표시 영역 (1단계)
+    - 배경: SLAM map 이미지
+    - 오버레이: 로봇 위치를 점으로 표시
+========================================================== -->
+<div class="card" style="margin-bottom: 16px;">
+    <h3>맵 / 로봇 위치</h3>
 
-<script>
-    // JS 에서 현재 로봇 이름을 사용하기 위해 전역 변수로 노출
-    window.INITIAL_ROBOT_NAME = "{{ initial_robot }}";
-</script>
+    <!-- canvas는 JS에서 이미지 크기에 맞춰 자동으로 크기를 설정 -->
+    <canvas id="mapCanvas" style="border: 1px solid #ccc; max-width: 100%;"></canvas>
 
-</body>
-</html>
+    <div style="margin-top: 8px; font-size: 0.9em; opacity: 0.85;">
+        Map: <span id="mapStatusText">loading...</span>
+    </div>
+</div>
+
+<!-- ==========================================================
+    이동 버튼 카드
+========================================================== -->
+<div class="card">
+    <h3>로봇 이동</h3>
+
+    <button id="btn-wait">대기장소</button>
+
+    <h4>입구</h4>
+    <button id="btn-entrance-1">입구 1</button>
+    <button id="btn-entrance-2">입구 2</button>
+    <button id="btn-entrance-3">입구 3</button>
+
+    <h4>출구</h4>
+    <button id="btn-exit-1">출구 1</button>
+    <button id="btn-exit-2">출구 2</button>
+    <button id="btn-exit-3">출구 3</button>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<!-- control 페이지 전용 JS -->
+<script src="/static/js/control.js"></script>
+<script src="/static/js/map_view.js"></script>
+{% endblock %}

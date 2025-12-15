@@ -1,80 +1,64 @@
+// =========================================================
 // app/static/js/control.js
+// 역할:
+// - 이동 버튼 클릭 → 이동 명령 전송
+// - UI / WebSocket / 상태 관리는 관여하지 않음
+// =========================================================
 
-let currentRobot = window.INITIAL_ROBOT_NAME || "";
+function getCurrentRobot() {
+    return window.AppState?.selectedRobot || "";
+}
 
-/**
- * API 호출 공통 함수
- * target: "wait", "entrance_1", "exit_2" 같은 문자열
- */
+/* =========================
+   이동 명령 전송
+========================= */
 async function sendGoal(target) {
-    if (!currentRobot) {
+    const robot = getCurrentRobot();
+    if (!robot) {
         alert("로봇이 선택되지 않았습니다.");
         return;
     }
 
     try {
         const res = await fetch(
-            `/control/api/${encodeURIComponent(currentRobot)}/goto?target=${target}`,
+            `/control/api/${encodeURIComponent(robot)}/goto?target=${encodeURIComponent(target)}`,
             { method: "POST" }
         );
 
         if (!res.ok) {
-            const text = await res.text();
-            alert("이동 실패: " + text);
-            return;
+            alert("이동 실패: " + await res.text());
+        } else {
+            console.log(`[CONTROL] ${robot} → ${target}`);
         }
-
-        console.log(`✅ Goal sent: ${target}`);
     } catch (err) {
-        console.error(err);
-        alert("서버 통신 오류");
+        console.error("[CONTROL] fetch error", err);
     }
 }
 
+/* =========================
+   버튼 이벤트 바인딩
+========================= */
+function setupControlButtons() {
+    const bind = (id, target) => {
+        const el = document.getElementById(id);
+        if (!el) return;          // 버튼이 없으면 아무것도 하지 않음
+        el.onclick = () => sendGoal(target);
+    };
 
-/**
- * 좌측 탭 클릭 시 선택 상태 변경
- */
-function setupRobotTabs() {
-    document.querySelectorAll(".robot-tab").forEach(tab => {
-        tab.addEventListener("click", () => {
-            // 모든 탭에서 active 제거
-            document.querySelectorAll(".robot-tab")
-                .forEach(t => t.classList.remove("active"));
+    bind("btn-wait", "wait");
 
-            // 현재 탭만 active
-            tab.classList.add("active");
+    bind("btn-entrance-1", "entrance_1");
+    bind("btn-entrance-2", "entrance_2");
+    bind("btn-entrance-3", "entrance_3");
 
-            // 현재 로봇 이름 변경
-            currentRobot = tab.dataset.robot;
-            document.getElementById("currentRobotName").textContent = currentRobot;
-        });
-    });
+    bind("btn-exit-1", "exit_1");
+    bind("btn-exit-2", "exit_2");
+    bind("btn-exit-3", "exit_3");
 }
 
-/**
- * 버튼에 이벤트 연결
- */
-function setupButtons() {
-    document.getElementById("btn-wait")
-        .addEventListener("click", () => sendMoveCommand("wait"));
-
-    document.getElementById("btn-entrance-1")
-        .addEventListener("click", () => sendMoveCommand("entrance_1"));
-    document.getElementById("btn-entrance-2")
-        .addEventListener("click", () => sendMoveCommand("entrance_2"));
-    document.getElementById("btn-entrance-3")
-        .addEventListener("click", () => sendMoveCommand("entrance_3"));
-
-    document.getElementById("btn-exit-1")
-        .addEventListener("click", () => sendMoveCommand("exit_1"));
-    document.getElementById("btn-exit-2")
-        .addEventListener("click", () => sendMoveCommand("exit_2"));
-    document.getElementById("btn-exit-3")
-        .addEventListener("click", () => sendMoveCommand("exit_3"));
-}
-
+/* =========================
+   Init
+========================= */
 window.addEventListener("DOMContentLoaded", () => {
-    setupRobotTabs();
-    setupButtons();
+    setupControlButtons();
 });

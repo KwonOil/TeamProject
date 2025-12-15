@@ -1,9 +1,9 @@
 # app/controllers/state_controller.py
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 import asyncio
 import json
 import math
-from threading import Lock
 from typing import Dict, Set
 
 from app.services.state_history_service import enqueue_state_history
@@ -24,7 +24,10 @@ latest_sim_state: Dict[str, dict] = {}
 robot_viewers: Dict[str, Set[WebSocket]] = {}
 sim_viewers: Dict[str, Set[WebSocket]] = {}
 
-state_lock = Lock()
+# 상태/뷰어 관련 공유 자원 보호용 Lock
+# asyncio 환경에서는 threading.Lock 이 아니라 asyncio.Lock 사용
+state_lock = asyncio.Lock()
+viewer_lock = asyncio.Lock()
 
 LIDAR_MAX_RANGE = 3.5
 
@@ -84,23 +87,39 @@ async def robot_state_ws(websocket: WebSocket, robot_name: str):
             # 라이다 데이터 정규화
             data = normalize_scan_data(data)
 
-            # 최신 상태 저장
-            with state_lock:
+            # 최신 상태 저장 (동시 접근 보호)
+            async with state_lock:
                 latest_robot_state[robot_name] = data
 
             # 실시간 viewer 브로드캐스트
             print(f"[ROBOT][STATE] recieved data")
-            viewers = robot_viewers.get(robot_name, set())
-            for ws in list(viewers):
-                try:
-                    await ws.send_json(data)
-                except Exception:
-                    viewers.discard(ws)
+
+            # viewer 목록은 락을 잡고 복사본만 가져온다.
+            async with viewer_lock:
+                viewers = list(robot_viewers.get(robot_name, set()))
+
+            if viewers:
+                # 각각 viewer 에 대해 병렬 전송
+                tasks = [ws.send_json(data) for ws in viewers]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                # 전송 실패한 소켓은 제거
+                dead = [
+                    ws for ws, result in zip(viewers, results)
+                    if isinstance(result, Exception)
+                ]
+
+                if dead:
+                    async with viewer_lock:
+                        for ws in dead:
+                            robot_viewers.get(robot_name, set()).discard(ws)
 
             # DB 히스토리 큐잉
             try:
                 await enqueue_state_history(robot_name, data)
             except asyncio.QueueFull:
+                # 큐가 가득 찬 경우, 데이터를 버리는 정책을 사용
+                # (로그 추가를 원하면 여기에서 print 로 남기면 됨)
                 pass
 
     except WebSocketDisconnect:
@@ -126,21 +145,32 @@ async def simulation_state_ws(websocket: WebSocket, robot_name: str):
             data = json.loads(msg)
 
             # 최신 상태 저장
-            with state_lock:
+            async with state_lock:
                 latest_sim_state[robot_name] = data
-        
+
             # 실시간 viewer 브로드캐스트
-            viewers = sim_viewers.get(robot_name, set())
-            for ws in list(viewers):
-                try:
-                    await ws.send_json(data)
-                except Exception:
-                    viewers.discard(ws)
-            
+            async with viewer_lock:
+                viewers = list(sim_viewers.get(robot_name, set()))
+
+            if viewers:
+                tasks = [ws.send_json(data) for ws in viewers]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                dead = [
+                    ws for ws, result in zip(viewers, results)
+                    if isinstance(result, Exception)
+                ]
+
+                if dead:
+                    async with viewer_lock:
+                        for ws in dead:
+                            sim_viewers.get(robot_name, set()).discard(ws)
+
             # DB 저장
             try:
                 await enqueue_simulation_history(robot_name, data)
             except asyncio.QueueFull:
+                # 큐가 가득 찬 경우 처리 정책 (현재는 조용히 버림)
                 pass
 
     except WebSocketDisconnect:
@@ -153,20 +183,31 @@ async def simulation_state_ws(websocket: WebSocket, robot_name: str):
 @router.websocket("/view/robot/{robot_name}")
 async def robot_view_ws(websocket: WebSocket, robot_name: str):
     await websocket.accept()
-
-    robot_viewers.setdefault(robot_name, set()).add(websocket)
+    
+    # viewer 등록 (동시성 보호)
+    async with viewer_lock:
+        robot_viewers.setdefault(robot_name, set()).add(websocket)
     print(f"[ROBOT][STATE][VIEW] viewer +1 ({robot_name})")
 
-    if robot_name in latest_robot_state:
-        await websocket.send_json(latest_robot_state[robot_name])
+    # 기존 최신 상태가 있으면 즉시 한 번 보내기
+    async with state_lock:
+        initial_state = latest_robot_state.get(robot_name)
+
+    if initial_state:
+        await websocket.send_json(initial_state)
 
     try:
         while True:
-            await websocket.receive_text()
+            msg = await websocket.receive_json()
+            await websocket.send_json(msg)
+            # viewer 쪽에서 ping/pong 혹은 keep-alive 용으로
+            # 메시지를 보낼 경우를 대비해 receive 유지
+            # await websocket.receive_text()
     except WebSocketDisconnect:
-        pass
+        print(f"[ROBOT][STATE][WS DISCONNECT] {robot_name}")
     finally:
-        robot_viewers[robot_name].discard(websocket)
+        async with viewer_lock:
+            robot_viewers.get(robot_name, set()).discard(websocket)
         print(f"[ROBOT][STATE][VIEW] viewer -1 ({robot_name})")
 
 
@@ -177,11 +218,15 @@ async def robot_view_ws(websocket: WebSocket, robot_name: str):
 async def sim_view_ws(websocket: WebSocket, robot_name: str):
     await websocket.accept()
 
-    sim_viewers.setdefault(robot_name, set()).add(websocket)
+    async with viewer_lock:
+        sim_viewers.setdefault(robot_name, set()).add(websocket)
     print(f"[SIM][STATE][VIEW] viewer +1 ({robot_name})")
 
-    if robot_name in latest_sim_state:
-        await websocket.send_json(latest_sim_state[robot_name])
+    async with state_lock:
+        initial_state = latest_sim_state.get(robot_name)
+
+    if initial_state:
+        await websocket.send_json(initial_state)
 
     try:
         while True:
@@ -189,5 +234,6 @@ async def sim_view_ws(websocket: WebSocket, robot_name: str):
     except WebSocketDisconnect:
         pass
     finally:
-        sim_viewers[robot_name].discard(websocket)
+        async with viewer_lock:
+            sim_viewers.get(robot_name, set()).discard(websocket)
         print(f"[SIM][STATE][VIEW] viewer -1 ({robot_name})")
