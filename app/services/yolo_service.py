@@ -19,7 +19,7 @@ async def run_yolo_infer(image_bytes: bytes) -> List[Dict[str, Any]]:
     # 메인 서버 전체가 멈추지 않도록 timeout 명시
     timeout = httpx.Timeout(
         connect=1.0,
-        read=1.0,
+        read=2.0,
         write=1.0,
         pool=1.0,
     )

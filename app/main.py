@@ -25,8 +25,8 @@ from app.controllers.map_controller import router as map_router
 
 app = FastAPI(title="Robot Dashboard")
 
-# Base.metadata.create_all(bind=engine)
-# BaseSim.metadata.create_all(bind=engine_sim)
+Base.metadata.create_all(bind=engine)
+BaseSim.metadata.create_all(bind=engine_sim)
 
 # 세션 미들웨어 추가
 # 실제 서비스에서는 환경변수 등으로 관리하는 것이 좋다.
@@ -61,7 +61,18 @@ async def root():
 
 @app.on_event("startup")
 async def startup_event():
+    # from app.services.state_history_service import enqueue_state_history
     # 백그라운드 워커 실행
     asyncio.create_task(yolo_worker())
     asyncio.create_task(state_history_worker())
     asyncio.create_task(simulation_history_worker())
+    # await enqueue_state_history("TEST_ROBOT", {
+    #     "type": "odom",
+    #     "data": {
+    #         "position": {"x": 1.0, "y": 2.0},
+    #         "twist": {
+    #             "linear": {"x": 0.5},
+    #             "angular": {"z": 0.1}
+    #         }
+    #     }
+    # })

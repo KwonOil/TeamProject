@@ -1,7 +1,7 @@
 # app/services/state_service.py
-from threading import Lock
-from typing import Dict, Set
+
 import asyncio
+from typing import Dict, Set
 from fastapi import WebSocket
 
 # robot_name -> 마지막 상태 메시지
@@ -10,42 +10,45 @@ latest_state: Dict[str, dict] = {}
 # robot_name -> viewer WebSocket set
 viewers: Dict[str, Set[WebSocket]] = {}
 
-state_lock = Lock()
+# asyncio 환경용 Lock
+state_lock = asyncio.Lock()
+viewer_lock = asyncio.Lock()
 
 # 상태 히스토리를 DB로 넘기기 위한 비동기 큐
-# 실시간 처리와 DB 저장을 분리하기 위해 사용
 state_history_queue: asyncio.Queue = asyncio.Queue(maxsize=1000)
 
 
 async def register_viewer(robot_name: str, websocket: WebSocket):
-    if robot_name not in viewers:
-        viewers[robot_name] = set()
-    viewers[robot_name].add(websocket)
+    async with viewer_lock:
+        viewers.setdefault(robot_name, set()).add(websocket)
 
 
 async def unregister_viewer(robot_name: str, websocket: WebSocket):
-    if robot_name in viewers:
-        viewers[robot_name].discard(websocket)
-        if not viewers[robot_name]:
-            del viewers[robot_name]
+    async with viewer_lock:
+        if robot_name in viewers:
+            viewers[robot_name].discard(websocket)
+            if not viewers[robot_name]:
+                del viewers[robot_name]
 
 
 async def broadcast_state(robot_name: str, state_data: dict):
     """
-    로봇에서 수신한 상태 메시지를
-    해당 로봇을 구독 중인 모든 대시보드로 즉시 전송
+    로봇 상태를 모든 viewer에 전송
     """
-    latest_state[robot_name] = state_data
+    async with state_lock:
+        latest_state[robot_name] = state_data
 
-    if robot_name not in viewers:
-        return
+    async with viewer_lock:
+        targets = list(viewers.get(robot_name, set()))
 
-    dead = set()
-    for ws in viewers[robot_name]:
+    dead = []
+    for ws in targets:
         try:
             await ws.send_json(state_data)
         except Exception:
-            dead.add(ws)
+            dead.append(ws)
 
-    for ws in dead:
-        viewers[robot_name].discard(ws)
+    if dead:
+        async with viewer_lock:
+            for ws in dead:
+                viewers.get(robot_name, set()).discard(ws)
