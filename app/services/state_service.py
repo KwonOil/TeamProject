@@ -1,21 +1,15 @@
 # app/services/state_service.py
+# 로봇 상태를 viewer에게 전달하는 실시간 메시지 허브
 
 import asyncio
 from typing import Dict, Set
 from fastapi import WebSocket
 
-# robot_name -> 마지막 상태 메시지
-latest_state: Dict[str, dict] = {}
-
 # robot_name -> viewer WebSocket set
 viewers: Dict[str, Set[WebSocket]] = {}
 
 # asyncio 환경용 Lock
-state_lock = asyncio.Lock()
 viewer_lock = asyncio.Lock()
-
-# 상태 히스토리를 DB로 넘기기 위한 비동기 큐
-state_history_queue: asyncio.Queue = asyncio.Queue(maxsize=1000)
 
 
 async def register_viewer(robot_name: str, websocket: WebSocket):
@@ -35,8 +29,6 @@ async def broadcast_state(robot_name: str, state_data: dict):
     """
     로봇 상태를 모든 viewer에 전송
     """
-    async with state_lock:
-        latest_state[robot_name] = state_data
 
     async with viewer_lock:
         targets = list(viewers.get(robot_name, set()))

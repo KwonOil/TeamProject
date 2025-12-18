@@ -1,21 +1,23 @@
 # app/services/state_history_worker.py
-
+# 상태 히스토리 DB 저장 Worker
 import asyncio
 from datetime import datetime
 
 from app.config.database import SessionLocal
 from app.models.robot_state_history import RobotStateHistory
-from app.services.state_service import state_history_queue
+from app.services.state_history_queue import state_history_queue
 
 
 async def state_history_worker():
     """
     상태 히스토리 DB 저장 Worker
 
-    - WebSocket 수신 즉시 enqueue 된 데이터를 처리
-    - odom 메시지를 받는 즉시 DB에 INSERT
-    - 구조는 비동기, DB I/O는 동기 (현실적 타협)
+    정책:
+    - 메시지 1개 = DB row 1개
+    - 타입별로 채울 수 있는 컬럼만 채운다
+    - 나머지는 NULL
     """
+
     print("[STATE_HISTORY_WORKER] started")
 
     while True:
@@ -24,42 +26,54 @@ async def state_history_worker():
         robot_name = item["robot_name"]
         data = item["data"]
         msg_type = data.get("type")
+        payload = data.get("data", {})
 
-        # odom만 저장
-        if msg_type != "odom":
+        # 기본값은 전부 None
+        record_kwargs = {
+            "robot_name": robot_name,
+            "timestamp": datetime.utcnow(),
+            "pos_x": None,
+            "pos_y": None,
+            "linear_velocity": None,
+            "angular_velocity": None,
+            "battery_percentage": None,
+            "scan_json": None,
+        }
+
+        # -----------------------------
+        # 타입별 매핑
+        # -----------------------------
+        if msg_type == "odom":
+            pos = payload.get("position", {})
+            lin = payload.get("linear_velocity", {})
+            ang = payload.get("angular_velocity", {})
+
+            record_kwargs.update({
+                "pos_x": pos.get("x"),
+                "pos_y": pos.get("y"),
+                "linear_velocity": lin.get("x"),
+                "angular_velocity": ang.get("z"),
+            })
+
+        elif msg_type == "battery":
+            record_kwargs["battery_percentage"] = payload.get("percentage")
+
+        elif msg_type == "scan":
+            record_kwargs["scan_json"] = payload
+
+        else:
+            # 저장할 가치 없는 타입
             continue
 
-        odom = data.get("data")
-        if not odom:
-            continue
-
-        pos = odom.get("position")
-        twist = odom.get("twist")
-
-        if not pos or not twist:
-            continue
-
-        record = RobotStateHistory(
-            robot_name=robot_name,
-
-            pos_x=pos.get("x"),
-            pos_y=pos.get("y"),
-
-            # odom 기반 실제 속도
-            linear_velocity=twist.get("linear", {}).get("x"),
-            angular_velocity=twist.get("angular", {}).get("z"),
-
-            battery_percentage=None,
-            scan_json=None,
-            timestamp=datetime.utcnow(),
-        )
-
-        # DB는 try 바깥에서 열지 않는다
+        # -----------------------------
+        # DB INSERT
+        # -----------------------------
         db = SessionLocal()
         try:
+            record = RobotStateHistory(**record_kwargs)
             db.add(record)
             db.commit()
-            print(f"[DB][OK] saved odom {robot_name}")
+            print(f"[DB][OK] saved {msg_type} {robot_name}")
 
         except Exception as e:
             db.rollback()

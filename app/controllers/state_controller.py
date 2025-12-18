@@ -78,6 +78,20 @@ async def robot_state_ws(websocket: WebSocket, robot_name: str):
             # 라이다 데이터 보정
             data = normalize_scan_data(data)
 
+            # odom 구조 정규화 (속도 키 이름 통일)
+            if data.get("type") == "odom":
+                odom = data.get("data", {})
+
+                # linear_velocity / angular_velocity → twist 로 변환
+                if "linear_velocity" in odom and "angular_velocity" in odom:
+                    odom["twist"] = {
+                        "linear": {
+                            "x": odom["linear_velocity"].get("x")
+                        },
+                        "angular": {
+                            "z": odom["angular_velocity"].get("z")
+                        }
+                    }
             # ------------------------------
             # viewer 브로드캐스트
             # ------------------------------
@@ -108,7 +122,6 @@ async def robot_state_ws(websocket: WebSocket, robot_name: str):
                 await enqueue_state_history(robot_name, data)
             except asyncio.QueueFull:
                 # 큐가 가득 찼을 경우 데이터 드롭
-                # (실시간 시스템에서는 허용되는 정책)
                 pass
 
     except WebSocketDisconnect:
