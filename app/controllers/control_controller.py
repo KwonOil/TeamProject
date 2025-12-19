@@ -28,7 +28,7 @@ templates = Jinja2Templates(directory="app/templates")
 # 이동 좌표 테이블
 # ==========================================================
 WAYPOINTS = {
-    "wait": {"x": 0.39, "y": -0.03, "yaw": 0.0},
+    "wait": {"x": -0.39, "y": 0.02, "yaw": 0.0},
 
     "entrance_1": {"x": 0.02, "y": -0.66, "yaw": 0.0},
     "entrance_2": {"x": 0.02, "y": 0.04, "yaw": 0.0},

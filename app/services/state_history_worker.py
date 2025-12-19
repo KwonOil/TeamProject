@@ -45,16 +45,19 @@ async def state_history_worker():
         # -----------------------------
         if msg_type == "odom":
             pos = payload.get("position", {})
-            lin = payload.get("linear_velocity", {})
-            ang = payload.get("angular_velocity", {})
 
             record_kwargs.update({
                 "pos_x": pos.get("x"),
                 "pos_y": pos.get("y"),
+            })
+        elif msg_type == "cmd_vel":
+            lin = payload.get("linear", {})
+            ang = payload.get("angular", {})
+
+            record_kwargs.update({
                 "linear_velocity": lin.get("x"),
                 "angular_velocity": ang.get("z"),
             })
-
         elif msg_type == "battery":
             record_kwargs["battery_percentage"] = payload.get("percentage")
 

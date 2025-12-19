@@ -105,6 +105,10 @@ function handleState(msg) {
             handleScan(msg.data);
             break;
 
+        case "cmd_vel":
+            handleCmdVel(msg.data);
+            break;
+
         default:
             // 필요 없는 타입은 무시
             break;
@@ -135,7 +139,7 @@ function handleOdom(data) {
     if (!data) return;
 
     const pos = data.position;
-    const twist = data.twist;
+    // const twist = data.twist;
 
     // 위치
     if (pos) {
@@ -152,13 +156,24 @@ function handleOdom(data) {
     }
 
     // 실제 이동 속도
-    if (twist) {
-        const velEl = document.getElementById("velText");
-        const angEl = document.getElementById("angVelText");
+    // if (twist) {
+    //     const velEl = document.getElementById("velText");
+    //     const angEl = document.getElementById("angVelText");
 
-        if (velEl) velEl.textContent = twist.linear.x.toFixed(2);
-        if (angEl) angEl.textContent = twist.angular.z.toFixed(2);
-    }
+    //     if (velEl) velEl.textContent = twist.linear.x.toFixed(2);
+    //     if (angEl) angEl.textContent = twist.angular.z.toFixed(2);
+    // }
+}
+
+/* =========================================================
+   CmdVel Handler
+========================================================= */
+function handleCmdVel(data) {
+    const velEl = document.getElementById("velText");
+    const angEl = document.getElementById("angVelText");
+
+    if (velEl) velEl.textContent = data.linear.x.toFixed(2);
+    if (angEl) angEl.textContent = data.angular.z.toFixed(2);
 }
 
 

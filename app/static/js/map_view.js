@@ -93,12 +93,12 @@ window.MapView = (() => {
 
         // 로봇 점 (빨간 원)
         ctx.beginPath();
-        ctx.arc(px, py, 6, 0, Math.PI * 2);
+        ctx.arc(px, py, 3, 0, Math.PI * 2);
         ctx.fillStyle = "red";
         ctx.fill();
 
         // 간단한 테두리
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1;
         ctx.strokeStyle = "white";
         ctx.stroke();
 
